@@ -6,6 +6,7 @@ Answer them in my own words, without looking at the notebook. If I cannot answer
 
 - [1. Tensors](#1-tensors) - `pytorch_basics/tensors.ipynb`
 - [2. Datasets and DataLoaders](#2-datasets-and-dataloaders) - `pytorch_basics/datasets_dataloaders.ipynb`
+- [3. Transforms](#3-transforms) - `pytorch_basics/transforms.ipynb`
 
 ---
 
@@ -134,3 +135,61 @@ One pass over the loader is one epoch.
 7. `ToTensor()` and `read_image` return different dtypes and ranges. Which are they, and what breaks if I mix them up?
 8. What is one epoch in terms of the DataLoader?
 9. I have 100 samples and `batch_size=32`. How many batches, and how big is the last one?
+
+---
+
+## 3. Transforms
+
+### Why they exist
+
+Data on disk is not in the form a model needs. Images are PIL objects, labels are ints. A model needs float tensors in a fixed layout.
+
+Every `torchvision` dataset takes two callables:
+
+- `transform` changes the features
+- `target_transform` changes the label
+
+Both run inside `__getitem__`, so they apply to one sample at a time, never to a batch.
+
+### ToTensor
+
+Does two things at once:
+
+- reorders `[height, width, channels]` into `[channels, height, width]`, the layout PyTorch layers expect
+- scales pixels from `uint8` 0-255 to `float32` 0.0-1.0
+
+### Lambda and scatter_
+
+`Lambda` wraps any function into a transform. The usual case is one-hot encoding the label:
+
+```python
+Lambda(lambda y: torch.zeros(10, dtype=torch.float).scatter_(0, torch.tensor(y), value=1))
+```
+
+`scatter_` writes `value` into the positions named by `index`. Start from ten zeros, write 1 at position `y`.
+
+One-hot is not the default. `nn.CrossEntropyLoss` wants the plain int class index, so normal classification leaves `target_transform` out. One-hot is for losses that need a full probability vector.
+
+### Compose and Normalize
+
+`Compose` chains transforms in order, each receiving the output of the previous. `Normalize(mean, std)` does `(x - mean) / std` per channel and must come after `ToTensor`, because it needs a float tensor.
+
+For FashionMNIST the training set gives mean 0.286 and std 0.353. After normalizing, the range is no longer 0.0-1.0 and values go negative. That is correct. The dataset mean moves near 0 and the std near 1, which helps training.
+
+Leakage rule: compute the statistics on the training set only, then reuse the same numbers for validation and test. Recomputing them on the test set leaks information.
+
+### The v2 API
+
+`torchvision.transforms.v2` is the current version and what new code should use. Same names, different import. There `ToTensor` is split in two: `ToImage` builds the tensor, `ToDtype(torch.float32, scale=True)` does the 0-255 to 0.0-1.0 step.
+
+### Questions for theme 3
+
+1. What is the difference between `transform` and `target_transform`? When does each run?
+2. `ToTensor` does two separate things. Name both, and say what breaks if each is skipped.
+3. Why must `Normalize` come after `ToTensor` and not before?
+4. After `Normalize` the pixel values go negative. Is that a bug? Explain.
+5. Where do the numbers in `Normalize(mean, std)` come from, and which part of the data must not be used to compute them?
+6. I normalize train with train statistics and test with test statistics. What is the name of this mistake, and why does it inflate my score?
+7. What does `scatter_` do in the one-hot lambda, and why is the tensor created with `zeros` first?
+8. `nn.CrossEntropyLoss` is used for classification. Should the label be one-hot or an int? What happens if I pass the wrong one?
+9. Transforms run per sample, not per batch. Why does that matter for augmentation, where two copies of one image should differ?
