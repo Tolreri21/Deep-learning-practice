@@ -30,6 +30,7 @@ NOTES.md          theory for each theme plus questions to answer
 | 1 | `pytorch_basics/tensors.ipynb` | creating tensors, shape, dtype, device, operations, NumPy bridge |
 | 2 | `pytorch_basics/datasets_dataloaders.ipynb` | built-in datasets, a custom `Dataset`, batching with `DataLoader` |
 | 3 | `pytorch_basics/transforms.ipynb` | `transform` and `target_transform`, `ToTensor`, `Compose`, `Normalize` |
+| 4 | `pytorch_basics/build_model.ipynb` | `nn.Module`, layers, shape flow, logits vs probabilities |
 
 ## Notes
 

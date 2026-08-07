@@ -7,6 +7,7 @@ Answer them in my own words, without looking at the notebook. If I cannot answer
 - [1. Tensors](#1-tensors) - `pytorch_basics/tensors.ipynb`
 - [2. Datasets and DataLoaders](#2-datasets-and-dataloaders) - `pytorch_basics/datasets_dataloaders.ipynb`
 - [3. Transforms](#3-transforms) - `pytorch_basics/transforms.ipynb`
+- [4. Build the model](#4-build-the-model) - `pytorch_basics/build_model.ipynb`
 
 ---
 
@@ -193,3 +194,66 @@ Leakage rule: compute the statistics on the training set only, then reuse the sa
 7. What does `scatter_` do in the one-hot lambda, and why is the tensor created with `zeros` first?
 8. `nn.CrossEntropyLoss` is used for classification. Should the label be one-hot or an int? What happens if I pass the wrong one?
 9. Transforms run per sample, not per batch. Why does that matter for augmentation, where two copies of one image should differ?
+
+---
+
+## 4. Build the model
+
+### nn.Module
+
+Every model subclasses `nn.Module` and has two parts:
+
+- `__init__` creates the layers, and must call `super().__init__()` first
+- `forward` says how data flows through them
+
+Layers assigned as attributes are registered automatically. That is why their weights appear in `model.parameters()` and move with `.to(device)`.
+
+Call `model(x)`, never `model.forward(x)`. The call operator runs registered hooks around `forward`.
+
+### The layers
+
+- `nn.Flatten` keeps dimension 0, the batch, and flattens the rest. 28 times 28 becomes 784.
+- `nn.Linear(in, out)` applies `x @ W.T + b` and touches only the last dimension, so `in_features` must match it. The weight is stored as `[out_features, in_features]`.
+- `nn.ReLU` sets negatives to 0 and keeps the rest. The shape does not change.
+- `nn.Sequential` is an ordered container, data passes through in the given order.
+- `nn.Softmax(dim=1)` turns logits into probabilities. `dim=1` because dimension 0 is the batch, so it runs across classes, not across samples.
+
+Shape flow for a batch of 3 images:
+
+```text
+input:    [3, 28, 28]
+flatten:  [3, 784]
+linear:   [3, 20]
+relu:     [3, 20]
+linear:   [3, 10]
+softmax:  [3, 10]
+```
+
+### Logits, probabilities, class
+
+Three different things:
+
+- **logits** are the raw outputs of the last layer, any real number
+- **probabilities** come from softmax, in 0.0-1.0 and summing to 1 across classes
+- **predicted class** is `argmax`, the index of the largest value
+
+The model returns logits and has no softmax layer. `nn.CrossEntropyLoss` applies log-softmax internally, so putting softmax in the model applies it twice and hurts training.
+
+### Parameters
+
+`model.named_parameters()` gives the name, shape and `requires_grad` of every weight and bias. `requires_grad=True` means autograd will compute a gradient for it. Freezing parameters is how feature extraction works, which is theme 7.
+
+The 784-512-512-10 network has 669706 parameters.
+
+### Questions for theme 4
+
+1. Which two methods does a model need, and what goes in each?
+2. What breaks if `super().__init__()` is not called?
+3. Why call `model(x)` instead of `model.forward(x)`?
+4. Why do the layer weights move to `mps` when I only wrote `model.to(device)`?
+5. `nn.Flatten` on `[3, 28, 28]` gives `[3, 784]`, not `[2352]`. Why is the batch dimension kept?
+6. `nn.Linear(784, 20)` stores its weight as `[20, 784]`. Why that order and not the other one?
+7. Two `Linear` layers with no activation between them. What is the problem?
+8. Define logits, probabilities and predicted class. Which one does `nn.CrossEntropyLoss` expect as input?
+9. Why is `dim=1` correct in `nn.Softmax(dim=1)`, and what would `dim=0` compute instead?
+10. The predictions in this notebook are meaningless. Why?
