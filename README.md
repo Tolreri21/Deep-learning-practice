@@ -31,6 +31,7 @@ NOTES.md          theory for each theme plus questions to answer
 | 2 | `pytorch_basics/datasets_dataloaders.ipynb` | built-in datasets, a custom `Dataset`, batching with `DataLoader` |
 | 3 | `pytorch_basics/transforms.ipynb` | `transform` and `target_transform`, `ToTensor`, `Compose`, `Normalize` |
 | 4 | `pytorch_basics/build_model.ipynb` | `nn.Module`, layers, shape flow, logits vs probabilities |
+| 5 | `pytorch_basics/autograd.ipynb` | `requires_grad`, `backward`, accumulation, `no_grad` and `detach` |
 
 ## Notes
 

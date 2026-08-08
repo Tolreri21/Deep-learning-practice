@@ -8,6 +8,7 @@ Answer them in my own words, without looking at the notebook. If I cannot answer
 - [2. Datasets and DataLoaders](#2-datasets-and-dataloaders) - `pytorch_basics/datasets_dataloaders.ipynb`
 - [3. Transforms](#3-transforms) - `pytorch_basics/transforms.ipynb`
 - [4. Build the model](#4-build-the-model) - `pytorch_basics/build_model.ipynb`
+- [5. Autograd](#5-autograd) - `pytorch_basics/autograd.ipynb`
 
 ---
 
@@ -257,3 +258,53 @@ The 784-512-512-10 network has 669706 parameters.
 8. Define logits, probabilities and predicted class. Which one does `nn.CrossEntropyLoss` expect as input?
 9. Why is `dim=1` correct in `nn.Softmax(dim=1)`, and what would `dim=0` compute instead?
 10. The predictions in this notebook are meaningless. Why?
+
+---
+
+## 5. Autograd
+
+### What it does
+
+During the forward pass PyTorch records every operation. `backward()` walks that record in reverse and applies the chain rule, filling `.grad` on the tensors that asked for it.
+
+Works the same on CPU, MPS and CUDA.
+
+### requires_grad, leaves, grad_fn
+
+- `requires_grad=True` marks a tensor to be optimized. Weights and biases get it, input data does not.
+- It spreads forward: any result touching such a tensor also needs gradients.
+- A **leaf** is a tensor made by the user, not by an operation. Only leaves with `requires_grad=True` get a populated `.grad`.
+- `grad_fn` is the function used to go backward through that step. Leaves have none.
+
+### backward
+
+`loss.backward()` fills `.grad` on every leaf that needs it. The gradient always has the same shape as its tensor, which is a quick sanity check.
+
+The graph is freed after `backward()`. A second call on the same graph raises unless `retain_graph=True`. This is why the graph gets rebuilt every iteration.
+
+`backward()` with no argument works only on a scalar, which is why a loss is always reduced to one number. For a non-scalar output a tensor of the same shape must be passed to say how each element is weighted.
+
+### Gradients accumulate
+
+`backward()` adds to `.grad`, it does not replace it. Three passes without clearing give three times the gradient.
+
+In a real loop the clearing is `optimizer.zero_grad()`. Forgetting it does not crash: the model still trains, but every step uses the sum of all previous gradients, so the updates are wrong and grow over time.
+
+### Turning tracking off
+
+- `torch.no_grad()` for a block, used in evaluation and inference. No graph is built, so it is faster and uses less memory.
+- `.detach()` for one tensor, used when a value has to leave the graph, for example to store or plot it.
+- `requires_grad_(False)` freezes a parameter so the optimizer cannot change it. That is feature extraction in transfer learning.
+
+### Questions for theme 5
+
+1. Which tensors in a network get `requires_grad=True`, and which never do?
+2. What is a leaf tensor? Which tensors actually get a populated `.grad`?
+3. What is `grad_fn`, and why is it `None` on `w` but set on `z`?
+4. After `loss.backward()`, what shape does `w.grad` have? Why is that a useful check?
+5. Calling `backward()` twice raises an error. Why, and what does that tell me about how the graph lives?
+6. `backward()` on a non-scalar raises. Why does a loss never hit this problem?
+7. What exactly does `optimizer.zero_grad()` prevent? Describe what training looks like without it.
+8. Name the difference between `torch.no_grad()` and `.detach()`. When do I reach for each?
+9. How do I freeze a layer, and what does the optimizer do with it afterwards?
+10. Why is the graph rebuilt on every iteration instead of being reused?
