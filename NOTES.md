@@ -9,6 +9,7 @@ Answer them in my own words, without looking at the notebook. If I cannot answer
 - [3. Transforms](#3-transforms) - `pytorch_basics/transforms.ipynb`
 - [4. Build the model](#4-build-the-model) - `pytorch_basics/build_model.ipynb`
 - [5. Autograd](#5-autograd) - `pytorch_basics/autograd.ipynb`
+- [6. Optimization](#6-optimization) - `pytorch_basics/optimization.ipynb`
 
 ---
 
@@ -165,7 +166,9 @@ Does two things at once:
 `Lambda` wraps any function into a transform. The usual case is one-hot encoding the label:
 
 ```python
-Lambda(lambda y: torch.zeros(10, dtype=torch.float).scatter_(0, torch.tensor(y), value=1))
+Lambda(
+    lambda y: torch.zeros(10, dtype=torch.float).scatter_(0, torch.tensor(y), value=1)
+)
 ```
 
 `scatter_` writes `value` into the positions named by `index`. Start from ten zeros, write 1 at position `y`.
@@ -308,3 +311,86 @@ In a real loop the clearing is `optimizer.zero_grad()`. Forgetting it does not c
 8. Name the difference between `torch.no_grad()` and `.detach()`. When do I reach for each?
 9. How do I freeze a layer, and what does the optimizer do with it afterwards?
 10. Why is the graph rebuilt on every iteration instead of being reused?
+
+---
+
+## 6. Optimization
+
+### The loop
+
+Training is guess and correct, repeated. The model guesses, the loss says how wrong it was, autograd computes the gradient, the optimizer moves the weights against it.
+
+One pass over the whole training set is an epoch. Each epoch has a train phase and an eval phase.
+
+### Hyperparameters
+
+Set by hand, not learned:
+
+- **learning rate** is the step size. Too small and training crawls, too large and the loss jumps around or diverges.
+- **batch size** is how many samples pass before one weight update.
+- **epochs** is how many times the whole training set is used.
+
+### Loss function
+
+`nn.CrossEntropyLoss` for single-label classification with more than two classes.
+
+- it takes **logits**, not probabilities, because it applies log-softmax itself
+- it takes the target as an **int class index** of shape `[batch]`, not one-hot
+
+Sanity check: an untrained model on 10 classes should start near `ln(10)`, about 2.30. A first loss far from that means something is wired wrong.
+
+### Optimizer
+
+Holds the parameters and the update rule. `model.parameters()` is the link to the model, so anything missing from that list will never change.
+
+SGD is the simplest rule. Adam adapts the step per parameter and usually needs less tuning.
+
+### The three steps
+
+Inside every batch, in this order:
+
+```python
+optimizer.zero_grad()
+loss.backward()
+optimizer.step()
+```
+
+1. `zero_grad` clears old gradients, because `backward` adds to them rather than replacing them
+2. `backward` computes the new gradients
+3. `step` applies them to the weights
+
+Order matters. Clearing after `backward` throws away the gradients just computed, and the model never learns.
+
+### train and eval mode
+
+`model.train()` and `model.eval()` switch layers that behave differently in the two phases, dropout and batch norm above all. A plain MLP has neither, so the calls change nothing there, but they are still written, because adding dropout later would silently break evaluation.
+
+`torch.no_grad()` is a separate thing. `eval()` changes layer behaviour, `no_grad()` stops the graph being built. Evaluation wants both.
+
+### Logging and accuracy
+
+`loss.item()` for logging, on purpose. Keeping the tensor would keep its whole graph alive and leak memory across the epoch.
+
+Accuracy compares `pred.argmax(1)` with the target. No softmax needed, because softmax does not change which value is largest.
+
+### Reading the numbers
+
+- train loss should fall steadily. Flat from the start usually means the learning rate is too small, or `zero_grad` and `step` are misplaced.
+- test loss should follow it down. Train loss falling while test loss turns up is overfitting.
+- accuracy is what gets reported, loss is what gets optimized. They can move apart.
+
+Measured run, SGD at `lr=1e-3`, 5 epochs: train loss 2.2375 down to 1.1589, accuracy 0.5154 up to 0.6402. Slow on purpose, so the trend is visible.
+
+### Questions for theme 6
+
+1. Name the three steps inside a batch, in order. What breaks if `zero_grad` comes last?
+2. Why does `nn.CrossEntropyLoss` take logits and not probabilities?
+3. What shape and dtype does the target have for `nn.CrossEntropyLoss`? What happens with one-hot instead?
+4. An untrained 10-class model starts at loss 2.30. Where does that number come from?
+5. What does `model.parameters()` do for the optimizer, and what happens to a tensor left out of it?
+6. What is the difference between `model.eval()` and `torch.no_grad()`? Why does evaluation use both?
+7. My model has no dropout or batch norm. Is `model.train()` pointless? Explain.
+8. Why log `loss.item()` instead of `loss`?
+9. Accuracy uses `argmax` with no softmax. Why is that correct?
+10. Train loss keeps falling, test loss starts rising. What is happening and what is it called?
+11. The learning rate is raised by 100 times and the loss becomes `nan`. What happened?
