@@ -33,6 +33,7 @@ NOTES.md          theory for each theme plus questions to answer
 | 4 | `pytorch_basics/build_model.ipynb` | `nn.Module`, layers, shape flow, logits vs probabilities |
 | 5 | `pytorch_basics/autograd.ipynb` | `requires_grad`, `backward`, accumulation, `no_grad` and `detach` |
 | 6 | `pytorch_basics/optimization.ipynb` | loss, optimizer, the training loop, `train` and `eval` mode |
+| 7 | `pytorch_basics/save_load.ipynb` | `state_dict`, `weights_only`, `map_location`, checkpoints |
 
 ## Notes
 

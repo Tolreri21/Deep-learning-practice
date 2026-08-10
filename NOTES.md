@@ -10,6 +10,7 @@ Answer them in my own words, without looking at the notebook. If I cannot answer
 - [4. Build the model](#4-build-the-model) - `pytorch_basics/build_model.ipynb`
 - [5. Autograd](#5-autograd) - `pytorch_basics/autograd.ipynb`
 - [6. Optimization](#6-optimization) - `pytorch_basics/optimization.ipynb`
+- [7. Save and load](#7-save-and-load) - `pytorch_basics/save_load.ipynb`
 
 ---
 
@@ -394,3 +395,92 @@ Measured run, SGD at `lr=1e-3`, 5 epochs: train loss 2.2375 down to 1.1589, accu
 9. Accuracy uses `argmax` with no softmax. Why is that correct?
 10. Train loss keeps falling, test loss starts rising. What is happening and what is it called?
 11. The learning rate is raised by 100 times and the loss becomes `nan`. What happened?
+
+---
+
+## 7. Save and load
+
+### state_dict
+
+A plain dictionary mapping each parameter name to its tensor. It holds the learned values and nothing else.
+
+The architecture is not in it. That lives in the Python class, which is why the class is still needed to load weights back.
+
+### Saving weights
+
+The normal way. The file holds tensors only, so it stays valid even if the class is later moved or renamed.
+
+```python
+torch.save(model.state_dict(), "models/mlp_weights.pth")
+```
+
+`.pth` and `.pt` are just conventions.
+
+### Loading weights
+
+Two steps, in this order:
+
+1. build an empty model of the same class, which creates the layers with random values
+2. overwrite them with `load_state_dict`
+
+```python
+model = NeuralNetwork()
+model.load_state_dict(torch.load(path, map_location=device, weights_only=True))
+model = model.to(device)
+```
+
+- `weights_only=True` allows only tensors to be unpickled. It blocks arbitrary code hidden in a checkpoint and is the default in current PyTorch. Keep it on for anything downloaded.
+- `map_location` decides where tensors land. Without it a file saved on CUDA fails to load on a machine with no GPU.
+- `load_state_dict` prints `<All keys matched successfully>` when the names line up. A mismatch there is the usual sign the class changed.
+
+The real check is that both models give identical outputs for the same input. Max difference should be exactly 0.0.
+
+### Saving the whole object
+
+Looks easier, because no class is needed at load time. It is not.
+
+Pickle stores a **reference** to the class, not its source. Loading needs that exact class importable from the same module path. Rename the file or move the class and the checkpoint stops loading.
+
+It also needs `weights_only=False`, which executes whatever is in the file. Never do that with a file from someone else.
+
+### eval before inference
+
+A freshly loaded model is in train mode. Without `model.eval()` dropout still drops values and batch norm still uses batch statistics, so predictions are quietly wrong. `model.training` shows which mode it is in.
+
+`torch.no_grad()` is the other half: no graph, less memory, faster.
+
+### Checkpoints
+
+Weights alone are enough for inference but not to continue training. The optimizer carries its own state, momentum buffers for SGD and moment estimates for Adam. Dropping it restarts the optimizer cold and the loss jumps.
+
+A checkpoint is an ordinary dict:
+
+```python
+torch.save(
+    {
+        "epoch": epoch,
+        "model_state": model.state_dict(),
+        "optimizer_state": optimizer.state_dict(),
+        "test_loss": test_loss,
+    },
+    path,
+)
+```
+
+```text
+inference only:      state_dict
+resume training:     state_dict plus optimizer state plus epoch
+share with someone:  state_dict, never the pickled object
+```
+
+### Questions for theme 7
+
+1. What is in a `state_dict` and what is not? Why does loading still need the class?
+2. Which two steps load weights back, and why can the order not be swapped?
+3. What does `weights_only=True` protect against, and when does it matter most?
+4. What does `map_location` do? Give a case where loading fails without it.
+5. `torch.save(model, path)` looks simpler than saving the `state_dict`. Name two ways it breaks later.
+6. How do I prove that a loaded model is really the same model?
+7. A loaded model gives strange predictions and no error. Which call was forgotten, and why is it silent?
+8. Weights are saved but training resumes badly. What was left out of the checkpoint, and why does it matter for Adam?
+9. `load_state_dict` reports missing or unexpected keys. What usually changed?
