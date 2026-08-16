@@ -18,6 +18,7 @@ To run a notebook, pick the `.venv` interpreter as the kernel in PyCharm or Jupy
 
 ```text
 pytorch_basics/   notebooks, one per theme
+projects/         mini-projects as scripts, one folder each
 models/           saved checkpoints, not tracked
 data/             downloaded datasets, not tracked
 NOTES.md          theory for each theme plus questions to answer
@@ -34,6 +35,21 @@ NOTES.md          theory for each theme plus questions to answer
 | 5 | `pytorch_basics/autograd.ipynb` | `requires_grad`, `backward`, accumulation, `no_grad` and `detach` |
 | 6 | `pytorch_basics/optimization.ipynb` | loss, optimizer, the training loop, `train` and `eval` mode |
 | 7 | `pytorch_basics/save_load.ipynb` | `state_dict`, `weights_only`, `map_location`, checkpoints |
+
+## Projects
+
+Notebooks are for learning a theme. Projects are scripts, run as modules from
+the repository root.
+
+| Project | Folder | Task |
+| --- | --- | --- |
+| 1 | `projects/fashion_mnist_mlp/` | FashionMNIST baseline: MLP, validation split, checkpoint, error inspection |
+
+```bash
+uv run python -m projects.fashion_mnist_mlp.train --epochs 5
+```
+
+Each project folder has its own `README.md` with the task and the commands.
 
 ## Notes
 
