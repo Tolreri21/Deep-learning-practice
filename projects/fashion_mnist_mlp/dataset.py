@@ -12,7 +12,7 @@ Inspect the loaders on their own:
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
@@ -68,6 +68,20 @@ def get_dataloaders(
     return train_loader, val_loader, test_loader
 
 
+def label_counts(dataset: Dataset) -> torch.Tensor:
+    """Class histogram of a split, read from the labels without loading images.
+
+    random_split hands back a Subset, so the labels live in the wrapped
+    dataset and have to be picked out by the subset indices.
+    """
+    if isinstance(dataset, Subset):
+        targets = dataset.dataset.targets[dataset.indices]
+    else:
+        targets = dataset.targets
+
+    return torch.bincount(targets, minlength=len(CLASS_NAMES))
+
+
 def main() -> None:
     loaders = zip(("train", "val", "test"), get_dataloaders())
 
@@ -78,6 +92,13 @@ def main() -> None:
             f"{len(loader):>4} batches  "
             f"images {tuple(images.shape)} {images.dtype}  "
             f"labels {tuple(labels.shape)} {labels.dtype}"
+        )
+
+        counts = label_counts(loader.dataset)
+        shares = counts / counts.sum()
+        print(
+            f"       classes {counts.min().item()}-{counts.max().item()} each, "
+            f"shares {shares.min().item():.4f}-{shares.max().item():.4f}"
         )
 
 
