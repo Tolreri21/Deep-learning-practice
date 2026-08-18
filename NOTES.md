@@ -1,6 +1,6 @@
 # Notes
 
-Short theory for each notebook in this repo. One theme per notebook. Every theme ends with questions I have to answer before moving on.
+Short theory for each notebook in this repo. One theme per notebook, and one per project. Every theme ends with questions I have to answer before moving on.
 
 Answer them in my own words, without looking at the notebook. If I cannot answer one, I go back and redo that part.
 
@@ -11,6 +11,7 @@ Answer them in my own words, without looking at the notebook. If I cannot answer
 - [5. Autograd](#5-autograd) - `pytorch_basics/autograd.ipynb`
 - [6. Optimization](#6-optimization) - `pytorch_basics/optimization.ipynb`
 - [7. Save and load](#7-save-and-load) - `pytorch_basics/save_load.ipynb`
+- [8. Validation and model selection](#8-validation-and-model-selection) - `projects/fashion_mnist_mlp/`
 
 ---
 
@@ -484,3 +485,67 @@ share with someone:  state_dict, never the pickled object
 7. A loaded model gives strange predictions and no error. Which call was forgotten, and why is it silent?
 8. Weights are saved but training resumes badly. What was left out of the checkpoint, and why does it matter for Adam?
 9. `load_state_dict` reports missing or unexpected keys. What usually changed?
+
+---
+
+## 8. Validation and model selection
+
+### Why the test set stops being a test set
+
+The optimization notebook scored the model on the test set after every epoch. That is fine for watching a loss curve, but the moment a decision is made from that number - how many epochs to run, which learning rate to keep, which checkpoint to save - the test set has been used for fitting. The reported accuracy is then optimistic and no longer an estimate of unseen data.
+
+Same mistake as fitting a scaler on the full dataset before splitting. Nothing crashes, the number just quietly stops meaning what it claims to mean.
+
+### The three splits
+
+```text
+train  fit the weights
+val    every decision: epochs, learning rate, width, which checkpoint to keep
+test   touched once, at the end, to report one number
+```
+
+The test set already exists in FashionMNIST, so the validation split is carved out of the training data.
+
+### random_split
+
+```python
+train_data, val_data = random_split(
+    train_full,
+    [train_size, val_size],
+    generator=torch.Generator().manual_seed(seed),
+)
+```
+
+Three things to know about it:
+
+- it returns a `Subset`, not a dataset. The samples stay in the wrapped dataset and the subset only holds indices, so labels are read as `subset.dataset.targets[subset.indices]`.
+- the generator is passed explicitly so the split stays the same across runs regardless of what else consumed randomness.
+- it does not stratify. On FashionMNIST the classes come out roughly balanced anyway, 8.9% to 11.0% in a 6000-sample split, but on a skewed dataset a stratified split is needed.
+
+### Choosing a checkpoint
+
+Validation accuracy is checked after every epoch and the checkpoint is written only when it improves. At the end the best checkpoint is loaded back and the test set is evaluated once.
+
+Keeping the last epoch instead means keeping whatever the model looked like after the final step, which may already be past the point where validation started degrading.
+
+### Reading the pair of numbers
+
+```text
+train high, val high        underfitting, the model is too small or undertrained
+train low, val much worse   overfitting, the gap is the amount of memorisation
+train low, val close        healthy, now the test set may be looked at
+val much better than test   the validation split is too small or leaked
+```
+
+### Questions for theme 8
+
+1. The test set is used to pick the number of epochs. Nothing errors out. What exactly went wrong?
+2. Why is the validation split cut out of the training data instead of the test data?
+3. What does `random_split` return, and where do the labels of that object actually live?
+4. Why is a generator passed to `random_split` instead of relying on the global seed?
+5. When does an unstratified split become a real problem, and what would replace it?
+6. Why is the checkpoint written on improvement rather than after the last epoch?
+7. Why is the best checkpoint reloaded before the test pass instead of testing the model already in memory?
+8. Train loss 0.21, validation loss 0.45. What is the name for that gap and what is the first thing to try?
+9. Validation accuracy is noticeably higher than test accuracy. Name two possible causes.
+10. What changes about all of this if the dataset had 500 samples instead of 60000?

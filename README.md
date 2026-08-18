@@ -53,7 +53,7 @@ Each project folder has its own `README.md` with the task and the commands.
 
 ## Notes
 
-`NOTES.md` holds short theory for every notebook, split by theme. Each theme ends with questions that have to be answered before moving on. A new notebook adds a new theme there.
+`NOTES.md` holds short theory for every notebook, split by theme. Each theme ends with questions that have to be answered before moving on. A new notebook or project adds a new theme there.
 
 ## Data
 
