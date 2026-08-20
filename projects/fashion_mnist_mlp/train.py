@@ -10,6 +10,7 @@ The two functions that carry the learning are left empty on purpose.
 """
 
 import argparse
+import json
 from pathlib import Path
 
 import torch
@@ -21,6 +22,7 @@ from projects.fashion_mnist_mlp.model import MLP
 from projects.fashion_mnist_mlp.utils import get_device, set_seed
 
 CHECKPOINT_PATH = Path("models") / "fashion_mnist_mlp.pth"
+HISTORY_PATH = Path("models") / "fashion_mnist_mlp_history.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -90,6 +92,21 @@ def save_checkpoint(
     )
 
 
+def save_history(
+    history: list[dict[str, float]],
+    args: argparse.Namespace,
+    test: dict[str, float] | None = None,
+) -> None:
+    """Dump the epoch table next to the checkpoint so runs can be compared.
+
+    Written after every epoch, not once at the end, so an interrupted run
+    still leaves its numbers behind.
+    """
+    HISTORY_PATH.parent.mkdir(exist_ok=True)
+    run = {"args": vars(args), "epochs": history, "test": test}
+    HISTORY_PATH.write_text(json.dumps(run, indent=2))
+
+
 def main() -> None:
     args = parse_args()
     set_seed(args.seed)
@@ -113,6 +130,7 @@ def main() -> None:
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     best_val_accuracy = 0.0
+    history: list[dict[str, float]] = []
 
     for epoch in range(1, args.epochs + 1):
         train_loss = train_one_epoch(train_loader, model, loss_fn, optimizer, device)
@@ -121,6 +139,16 @@ def main() -> None:
             f"epoch {epoch:>2d}  train loss {train_loss:.4f}  "
             f"val loss {val_loss:.4f}  val acc {val_accuracy:.4f}"
         )
+
+        history.append(
+            {
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "val_loss": val_loss,
+                "val_accuracy": val_accuracy,
+            }
+        )
+        save_history(history, args)
 
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
@@ -132,10 +160,15 @@ def main() -> None:
     checkpoint = torch.load(CHECKPOINT_PATH, map_location=device, weights_only=True)
     model.load_state_dict(checkpoint["model_state"])
     test_loss, test_accuracy = evaluate(test_loader, model, loss_fn, device)
+    save_history(
+        history, args, {"test_loss": test_loss, "test_accuracy": test_accuracy}
+    )
+
     print(
         f"test loss {test_loss:.4f}  test accuracy {test_accuracy:.4f}  "
         f"(from epoch {checkpoint['epoch']})"
     )
+    print(f"history in {HISTORY_PATH}")
 
 
 if __name__ == "__main__":

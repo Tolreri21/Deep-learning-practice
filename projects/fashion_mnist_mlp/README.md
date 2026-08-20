@@ -31,7 +31,9 @@ Run them as modules from the root, not as file paths — that keeps the imports
 between the files working and keeps `data/` and `models/` pointing at the
 repository root.
 
-The checkpoint goes to `models/fashion_mnist_mlp.pth`, which is not tracked.
+The checkpoint goes to `models/fashion_mnist_mlp.pth` and the per-epoch numbers
+to `models/fashion_mnist_mlp_history.json`, so two runs can be compared after the
+fact. Neither is tracked by git.
 
 ## What is different from the notebooks
 
