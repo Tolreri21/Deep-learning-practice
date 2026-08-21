@@ -10,11 +10,12 @@ network. No convolutions yet — this is the baseline a CNN has to beat later.
 ## Layout
 
 ```text
-dataset.py   FashionMNIST, train/val split, three DataLoaders
-model.py     the MLP
-train.py     training loop, validation, checkpointing, one final test pass
-predict.py   loads the checkpoint and prints misclassified samples
-utils.py     device selection and seeding
+dataset.py       FashionMNIST, train/val split, three DataLoaders
+model.py         the MLP
+train.py         training loop, validation, checkpointing, one final test pass
+predict.py       loads the checkpoint and prints misclassified samples
+plot_history.py  draws the loss and accuracy curves of a run
+utils.py         device selection and seeding
 ```
 
 ## Run
@@ -25,6 +26,7 @@ From the repository root:
 uv run python -m projects.fashion_mnist_mlp.dataset          # check the shapes
 uv run python -m projects.fashion_mnist_mlp.train --epochs 5
 uv run python -m projects.fashion_mnist_mlp.predict --errors 10
+uv run python -m projects.fashion_mnist_mlp.plot_history
 ```
 
 Run them as modules from the root, not as file paths — that keeps the imports
