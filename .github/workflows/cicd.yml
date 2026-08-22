@@ -29,3 +29,9 @@ jobs:
 
       - name: check code format
         run: uv run ruff format --check
+
+      - name: check project imports
+        run: >
+          uv run python -c "import importlib, pathlib;
+          [importlib.import_module('projects.fashion_mnist_mlp.' + module.stem)
+          for module in sorted(pathlib.Path('projects/fashion_mnist_mlp').glob('*.py'))]"
