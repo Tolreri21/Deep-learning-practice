@@ -66,7 +66,13 @@ uv run ruff check .
 uv run ruff format --check
 ```
 
-CI runs both on every push and pull request. `pre-commit` runs the same plus `nbstripout`, which clears notebook outputs so diffs stay readable.
+CI runs both on every push and pull request, plus a check that every module under `projects/` imports.
+
+`pre-commit` runs the same linters plus `nbstripout`, which clears notebook outputs so diffs stay readable. It is a dev dependency, but the git hook itself is per clone and has to be installed once:
+
+```bash
+uv run pre-commit install
+```
 
 ## Device
 
