@@ -157,6 +157,9 @@ def main() -> None:
 
     print(f"best val accuracy {best_val_accuracy:.4f}")
 
+    if not CHECKPOINT_PATH.exists():
+        raise SystemExit(f"no checkpoint written after {args.epochs} epochs")
+
     checkpoint = torch.load(CHECKPOINT_PATH, map_location=device, weights_only=True)
     model.load_state_dict(checkpoint["model_state"])
     test_loss, test_accuracy = evaluate(test_loader, model, loss_fn, device)
