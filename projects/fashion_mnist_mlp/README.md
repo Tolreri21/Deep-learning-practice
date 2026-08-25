@@ -11,6 +11,7 @@ network. No convolutions yet — this is the baseline a CNN has to beat later.
 
 ```text
 dataset.py       FashionMNIST, train/val split, three DataLoaders
+show_samples.py  saves a grid of training images, one row per class
 model.py         the MLP
 train.py         training loop, validation, checkpointing, one final test pass
 predict.py       loads the checkpoint and prints misclassified samples
@@ -24,6 +25,7 @@ From the repository root:
 
 ```bash
 uv run python -m projects.fashion_mnist_mlp.dataset          # check the shapes
+uv run python -m projects.fashion_mnist_mlp.show_samples     # look at the data
 uv run python -m projects.fashion_mnist_mlp.train --epochs 5
 uv run python -m projects.fashion_mnist_mlp.predict --errors 10
 uv run python -m projects.fashion_mnist_mlp.plot_history
