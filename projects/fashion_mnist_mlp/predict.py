@@ -20,6 +20,7 @@ CHECKPOINT_PATH = Path("models") / "fashion_mnist_mlp.pth"
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Inspect FashionMNIST errors")
     parser.add_argument("--errors", type=int, default=10)
+    parser.add_argument("--pairs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     return parser.parse_args()
@@ -41,24 +42,40 @@ def load_model(device: torch.device) -> MLP:
     return model
 
 
-def per_class_accuracy(
+def confusion_matrix(
     model: MLP, loader: DataLoader, device: torch.device
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Correct predictions and sample count per class over the whole loader."""
+) -> torch.Tensor:
+    """counts[true, predicted] over the whole loader, shape [10, 10].
+
+    The diagonal holds the correct predictions, so per class accuracy comes
+    out of the same single pass rather than a second one.
+    """
     classes = len(CLASS_NAMES)
-    correct = torch.zeros(classes, dtype=torch.long)
-    total = torch.zeros(classes, dtype=torch.long)
+    counts = torch.zeros(classes, classes, dtype=torch.long)
 
     with torch.no_grad():
         for images, labels in loader:
             images, labels = images.to(device), labels.to(device)
             predicted = model(images).argmax(dim=1)
 
-            hits = labels[predicted == labels].cpu()
-            total += torch.bincount(labels.cpu(), minlength=classes)
-            correct += torch.bincount(hits, minlength=classes)
+            pairs = (labels * classes + predicted).cpu()
+            counts += torch.bincount(pairs, minlength=classes**2).reshape(
+                classes, classes
+            )
 
-    return correct, total
+    return counts
+
+
+def worst_pairs(counts: torch.Tensor, limit: int) -> list[tuple[int, int, int]]:
+    """The most frequent (true, predicted, count) mix-ups, diagonal excluded."""
+    mistakes = counts.clone()
+    mistakes.fill_diagonal_(0)
+
+    values, flat = mistakes.flatten().topk(limit)
+    return [
+        (index // counts.size(1), index % counts.size(1), value)
+        for value, index in zip(values.tolist(), flat.tolist())
+    ]
 
 
 def show_errors(
@@ -98,7 +115,8 @@ def main() -> None:
     model = load_model(device)
     _, _, test_loader = get_dataloaders(batch_size=args.batch_size, seed=args.seed)
 
-    correct, total = per_class_accuracy(model, test_loader, device)
+    counts = confusion_matrix(model, test_loader, device)
+    correct, total = counts.diag(), counts.sum(dim=1)
     accuracy = correct / total
 
     print(f"test accuracy {correct.sum().item() / total.sum().item():.4f}")
@@ -107,6 +125,13 @@ def main() -> None:
         print(
             f"  {CLASS_NAMES[index]:<12} {accuracy[index].item():.4f}  "
             f"({correct[index].item()}/{total[index].item()})"
+        )
+
+    print(f"most frequent mix-ups, {args.pairs} worst:")
+    for true, predicted, count in worst_pairs(counts, args.pairs):
+        print(
+            f"  {CLASS_NAMES[true]:<12} taken for {CLASS_NAMES[predicted]:<12} "
+            f"{count} times"
         )
 
     print(f"first {args.errors} errors:")

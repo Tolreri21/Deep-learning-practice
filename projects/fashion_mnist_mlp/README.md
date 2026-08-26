@@ -14,7 +14,7 @@ dataset.py       FashionMNIST, train/val split, three DataLoaders
 show_samples.py  saves a grid of training images, one row per class
 model.py         the MLP
 train.py         training loop, validation, checkpointing, one final test pass
-predict.py       loads the checkpoint and prints misclassified samples
+predict.py       per class accuracy, the worst mix-ups, single errors
 plot_history.py  draws the loss and accuracy curves of a run
 utils.py         device selection and seeding
 ```
