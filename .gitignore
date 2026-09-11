@@ -219,7 +219,6 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Learning-lab outputs: downloaded datasets and saved checkpoints
-data/*
-!data/.gitkeep
+data/
 models/*
 !models/.gitkeep
