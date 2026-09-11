@@ -18,6 +18,7 @@ To run a notebook, pick the `.venv` interpreter as the kernel in PyCharm or Jupy
 
 ```text
 pytorch_basics/   notebooks, one per theme
+projects/         mini-projects as scripts, one folder each
 models/           saved checkpoints, not tracked
 data/             downloaded datasets, not tracked
 NOTES.md          theory for each theme plus questions to answer
@@ -35,9 +36,24 @@ NOTES.md          theory for each theme plus questions to answer
 | 6 | `pytorch_basics/optimization.ipynb` | loss, optimizer, the training loop, `train` and `eval` mode |
 | 7 | `pytorch_basics/save_load.ipynb` | `state_dict`, `weights_only`, `map_location`, checkpoints |
 
+## Projects
+
+Notebooks are for learning a theme. Projects are scripts, run as modules from
+the repository root.
+
+| Project | Folder | Task |
+| --- | --- | --- |
+| 1 | `projects/fashion_mnist_mlp/` | FashionMNIST baseline: MLP, validation split, checkpoint, error inspection |
+
+```bash
+uv run python -m projects.fashion_mnist_mlp.train --epochs 5
+```
+
+Each project folder has its own `README.md` with the task and the commands.
+
 ## Notes
 
-`NOTES.md` holds short theory for every notebook, split by theme. Each theme ends with questions that have to be answered before moving on. A new notebook adds a new theme there.
+`NOTES.md` holds short theory for every notebook, split by theme. Each theme ends with questions that have to be answered before moving on. A new notebook or project adds a new theme there.
 
 ## Data
 
@@ -50,7 +66,13 @@ uv run ruff check .
 uv run ruff format --check
 ```
 
-CI runs both on every push and pull request. `pre-commit` runs the same plus `nbstripout`, which clears notebook outputs so diffs stay readable.
+CI runs both on every push and pull request, plus a check that every module under `projects/` imports.
+
+`pre-commit` runs the same linters plus `nbstripout`, which clears notebook outputs so diffs stay readable. It is a dev dependency, but the git hook itself is per clone and has to be installed once:
+
+```bash
+uv run pre-commit install
+```
 
 ## Device
 
